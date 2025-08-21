@@ -1,0 +1,42 @@
+name: Deploy N1 Bot to Azure Web App
+
+on:
+  push:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+env:
+  AZURE_WEBAPP_NAME: app-n1-suporte   # troque se seu App Service tiver outro nome
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    # (Opcional) valida dependencies no CI
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ env.PYTHON_VERSION }}
+
+    - name: Validate dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    # Cria um zip do conteúdo do repositório (ignora pastas desnecessárias)
+    - name: Zip artifact
+      run: |
+        zip -r release.zip . -x ".git/*" ".github/*" "venv/*" "__pycache__/*"
+
+    # Publica no App Service usando o publish profile salvo no secret
+    - name: Deploy to Azure Web App
+      uses: azure/webapps-deploy@v3
+      with:
+        app-name: ${{ env.AZURE_WEBAPP_NAME }}
+        publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+        package: release.zip
