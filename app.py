@@ -5,19 +5,15 @@ from botbuilder.core.integration import ConfigurationBotFrameworkAuthentication
 from botbuilder.schema import Activity
 from bot_logic import EchoBot
 
-# Credenciais vindas das App Settings do App Service
 APP_ID = os.getenv("MicrosoftAppId")
 APP_PASSWORD = os.getenv("MicrosoftAppPassword")
 
-# Autenticação recomendada para canais (Teams)
-bot_auth = ConfigurationBotFrameworkAuthentication(
+auth = ConfigurationBotFrameworkAuthentication(
     microsoft_app_id=APP_ID,
     microsoft_app_password=APP_PASSWORD,
-    # Os demais argumentos podem ficar None para o padrão (SingleTenant está OK)
-    # Veja: https://github.com/microsoft/botbuilder-python
 )
 
-adapter = CloudAdapter(bot_auth)
+adapter = CloudAdapter(auth)
 bot = EchoBot()
 
 async def messages(request: web.Request) -> web.Response:
@@ -36,12 +32,16 @@ async def messages(request: web.Request) -> web.Response:
         await adapter.process_activity(auth_header, activity, logic)
         return web.Response(text="OK", status=201)
     except Exception as e:
-        # log simples
         print(f"[ERROR] process_activity: {e}")
         return web.Response(text="ERR", status=500)
 
+# endpoint de saúde opcional para teste rápido
+async def health(_):
+    return web.Response(text="ok", status=200)
+
 app = web.Application()
 app.router.add_post("/api/messages", messages)
+app.router.add_get("/healthz", health)
 
 if __name__ == "__main__":
     web.run_app(app, host="0.0.0.0", port=int(os.environ.get("PORT", 8000)))
